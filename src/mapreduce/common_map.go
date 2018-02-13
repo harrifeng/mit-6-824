@@ -69,6 +69,7 @@ func doMap(
 
 	for i := 0; i < nReduce; i++ {
 		f, err := os.Create(reduceName(jobName, mapTask, i))
+		defer f.Close()
 		if err != nil {
 			fmt.Println("error on create file reduce")
 		}
