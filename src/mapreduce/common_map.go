@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"hash/fnv"
 	"io/ioutil"
+	"os"
 )
 
 func doMap(
@@ -61,12 +62,15 @@ func doMap(
 	//
 	// Your code here (Part I).
 	//
+
+	f, err := os.Create(reduceName(jobName, mapTask, ihash(string(b))%nReduce))
+	defer f.Close()
+	if err != nil {
+		return
+	}
+	enc := json.NewEncoder(f)
 	for _, one := range kvs {
-		data, err := json.Marshal(one)
-		if err != nil {
-			return
-		}
-		err = ioutil.WriteFile(reduceName(jobName, mapTask, ihash(one.Key)), data, 644)
+		err := enc.Encode(&one)
 		if err != nil {
 			return
 		}
