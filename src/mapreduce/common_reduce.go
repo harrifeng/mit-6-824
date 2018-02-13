@@ -2,7 +2,6 @@ package mapreduce
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -22,26 +21,32 @@ func doReduce(
 	nMap int, // the number of map tasks that were run ("M" in the paper)
 	reduceF func(key string, values []string) string,
 ) {
-	f, err := os.Open(reduceName(jobName, 0, reduceTask))
-
-	fmt.Println(reduceName(jobName, 0, reduceTask))
-	if err != nil {
-		return
-	}
-	defer f.Close()
-
-	dec := json.NewDecoder(f)
-
 	kvs := []KeyValue{}
-	for {
-		var kv KeyValue
 
-		if err := dec.Decode(&kv); err == io.EOF {
-			break
-		} else if err != nil {
+	i := 0
+
+	for i < nMap {
+
+		f, err := os.Open(reduceName(jobName, i, reduceTask))
+		defer f.Close()
+
+		if err != nil {
 			return
 		}
-		kvs = append(kvs, kv)
+
+		dec := json.NewDecoder(f)
+
+		for {
+			var kv KeyValue
+
+			if err := dec.Decode(&kv); err == io.EOF {
+				break
+			} else if err != nil {
+				return
+			}
+			kvs = append(kvs, kv)
+		}
+		i++
 	}
 
 	sort.Sort(KVS(kvs))
@@ -85,7 +90,7 @@ func doReduce(
 	//
 
 	fout, err := os.Create(outFile)
-	defer f.Close()
+	defer fout.Close()
 	if err != nil {
 		return
 	}
