@@ -1,5 +1,20 @@
 package mapreduce
 
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+)
+
+type KVS []KeyValue
+
+func (kvs KVS) Len() int           { return len(kvs) }
+func (kvs KVS) Swap(i, j int)      { kvs[i], kvs[j] = kvs[j], kvs[i] }
+func (kvs KVS) Less(i, j int) bool { return strings.Compare(kvs[i].Key, kvs[j].Key) < 0 }
+
 func doReduce(
 	jobName string, // the name of the whole MapReduce job
 	reduceTask int, // which reduce task this is
@@ -7,6 +22,30 @@ func doReduce(
 	nMap int, // the number of map tasks that were run ("M" in the paper)
 	reduceF func(key string, values []string) string,
 ) {
+	f, err := os.Open(reduceName(jobName, 0, reduceTask))
+
+	fmt.Println(reduceName(jobName, 0, reduceTask))
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	dec := json.NewDecoder(f)
+
+	kvs := []KeyValue{}
+	for {
+		var kv KeyValue
+
+		if err := dec.Decode(&kv); err == io.EOF {
+			break
+		} else if err != nil {
+			return
+		}
+		kvs = append(kvs, kv)
+	}
+
+	sort.Sort(KVS(kvs))
+
 	//
 	// doReduce manages one reduce task: it should read the intermediate
 	// files for the task, sort the intermediate key/value pairs by key,
@@ -44,4 +83,15 @@ func doReduce(
 	//
 	// Your code here (Part I).
 	//
+
+	fout, err := os.Create(outFile)
+	defer f.Close()
+	if err != nil {
+		return
+	}
+	enc := json.NewEncoder(fout)
+
+	for _, one := range kvs {
+		enc.Encode(KeyValue{one.Key, reduceF(one.Key, []string{one.Value})})
+	}
 }
