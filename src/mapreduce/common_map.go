@@ -2,6 +2,7 @@ package mapreduce
 
 import (
 	"encoding/json"
+	"fmt"
 	"hash/fnv"
 	"io/ioutil"
 	"os"
@@ -15,11 +16,6 @@ func doMap(
 	mapF func(filename string, contents string) []KeyValue,
 ) {
 
-	b, err := ioutil.ReadFile(inFile)
-	if err != nil {
-		return
-	}
-	kvs := mapF(inFile, string(b))
 	//
 	// doMap manages one map task: it should read one of the input files
 	// (inFile), call the user-defined map function (mapF) for that file's
@@ -63,14 +59,30 @@ func doMap(
 	// Your code here (Part I).
 	//
 
-	f, err := os.Create(reduceName(jobName, mapTask, ihash(string(b))%nReduce))
-	defer f.Close()
+	b, err := ioutil.ReadFile(inFile)
 	if err != nil {
 		return
 	}
-	enc := json.NewEncoder(f)
+	kvs := mapF(inFile, string(b))
+
+	var encs []*json.Encoder
+
+	for i := 0; i < nReduce; i++ {
+		f, err := os.Create(reduceName(jobName, mapTask, i))
+		if err != nil {
+			fmt.Println("error on create file reduce")
+		}
+		encs = append(encs, json.NewEncoder(f))
+	}
+
+	// f, err := os.Create(reduceName(jobName, mapTask, ihash(string(b))%nReduce))
+	// defer f.Close()
+	// if err != nil {
+	// 	return
+	// }
+	// enc := json.NewEncoder(f)
 	for _, one := range kvs {
-		err := enc.Encode(&one)
+		err := encs[ihash(one.Key)%nReduce].Encode(&one)
 		if err != nil {
 			return
 		}

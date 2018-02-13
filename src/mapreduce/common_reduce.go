@@ -2,6 +2,7 @@ package mapreduce
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -28,9 +29,12 @@ func doReduce(
 	for i < nMap {
 
 		f, err := os.Open(reduceName(jobName, i, reduceTask))
+		fmt.Println(reduceName(jobName, i, reduceTask))
 		defer f.Close()
 
 		if err != nil {
+			fmt.Println("open error")
+			fmt.Println(err)
 			return
 		}
 
@@ -42,12 +46,16 @@ func doReduce(
 			if err := dec.Decode(&kv); err == io.EOF {
 				break
 			} else if err != nil {
+				fmt.Println("decode error")
+
 				return
 			}
 			kvs = append(kvs, kv)
 		}
 		i++
 	}
+
+	fmt.Println(len(kvs))
 
 	sort.Sort(KVS(kvs))
 

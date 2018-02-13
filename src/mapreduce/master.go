@@ -70,6 +70,7 @@ func Sequential(jobName string, files []string, nreduce int,
 			}
 		case reducePhase:
 			for i := 0; i < mr.nReduce; i++ {
+				fmt.Println(mergeName(mr.jobName, i))
 				doReduce(mr.jobName, i, mergeName(mr.jobName, i), len(mr.files), reduceF)
 			}
 		}
